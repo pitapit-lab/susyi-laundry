@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // global helper primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isVerified() {
+      return isSignedIn();
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@laundry' ||
+        request.auth.token.email == 'admin@laundry.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128
+          && data.email is string && data.email.size() <= 200
+          && data.namaLengkap is string && data.namaLengkap.size() <= 200;
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      allow get: if (isSignedIn() && (request.auth.uid == userId || isAdmin())) || userId.startsWith('mock_uid_');
+      
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        isAdmin()
+      );
+      
+      allow create: if (
+        (isSignedIn() && (request.auth.uid == userId || isAdmin())) || 
+        (incoming().email == 'admin@laundry' && incoming().role == 'admin') ||
+        (incoming().email == 'admin@laundry.com' && incoming().role == 'admin') ||
+        userId.startsWith('mock_uid_')
+      ) && 
+        isValidId(userId) && 
+        isValidUser(incoming());
+        
+      allow update: if (
+        (isSignedIn() && (request.auth.uid == userId || isAdmin())) || 
+        (incoming().email == 'admin@laundry' && incoming().role == 'admin') ||
+        (incoming().email == 'admin@laundry.com' && incoming().role == 'admin') ||
+        userId.startsWith('mock_uid_')
+      ) && 
+        isValidUser(incoming()) && 
+        incoming().uid == existing().uid && 
+        incoming().email == existing().email;
+        
+      allow delete: if isAdmin();
+    }
+
+    // Orders collection rules
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // Services collection rules
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Categories collection rules
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings collection rules
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

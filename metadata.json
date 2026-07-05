@@ -1,0 +1,6 @@
+{
+  "name": "Susyi Laundry",
+  "description": "Desain website laundry dengan konsep minimalis, elegan, Instagramable, berwarna lavender dan lilac dengan aksen rose gold/gold ditenagai oleh animasi halus.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

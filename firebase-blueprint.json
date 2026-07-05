@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile containing contact details, location, and points.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "namaLengkap": { "type": "string" },
+        "nomorWhatsapp": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "provider": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "status": { "type": "string" },
+        "alamat": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "lastLogin": { "type": "string" },
+        "points": { "type": "integer" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Laundry order transaction containing client info, services, pricing, and status.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "pickupAddress": { "type": "string" },
+        "service": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "order_id": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "additional_fee": { "type": "number" },
+        "grand_total": { "type": "number" }
+      },
+      "required": ["order_id", "customerId", "customerName", "phone", "pickupAddress", "service", "status", "createdAt"]
+    },
+    "ServiceItem": {
+      "title": "ServiceItem",
+      "description": "Laundry service master configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "price": { "type": "number" },
+        "unit": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "isActive"]
+    },
+    "CategoryItem": {
+      "title": "CategoryItem",
+      "description": "Category for laundry item pricing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "items": { "type": "array" }
+      },
+      "required": ["id", "name", "icon"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "heroBannerTitle": { "type": "string" },
+        "heroBannerText": { "type": "string" },
+        "heroBannerVisible": { "type": "boolean" },
+        "adminWhatsapp": { "type": "string" },
+        "operationalHours": { "type": "array" },
+        "promoText": { "type": "string" },
+        "terms": { "type": "array" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User documents containing profile and settings"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Standalone order document collection containing all transactions"
+    },
+    "services/{serviceId}": {
+      "schema": "ServiceItem",
+      "description": "Master laundry service items"
+    },
+    "categories/{categoryId}": {
+      "schema": "CategoryItem",
+      "description": "Laundry category items for pricing calculation"
+    },
+    "settings/{settingsId}": {
+      "schema": "AppSettings",
+      "description": "Application general settings and configurations"
+    }
+  }
+}
