@@ -9,7 +9,6 @@ import Kontak from './components/Kontak';
 import LoginModal from './components/LoginModal';
 import CustomerDashboard from './components/CustomerDashboard';
 import AdminDashboard from './components/AdminDashboard';
-import AdminLogin from './components/AdminLogin';
 import { FloatingPetals } from './components/Decorations';
 import { Customer, Order } from './types';
 import { 
@@ -163,7 +162,6 @@ export default function App() {
         activeCustomerId = customer.uid || 'guest_uid';
 
         setCustomer(updatedCust);
-        localStorage.setItem('lavender_customer', JSON.stringify({ uid: updatedCust.uid, email: updatedCust.email, role: updatedCust.role }));
         saveRegisteredUser(updatedCust);
 
         // Sync customer profile to Firestore
@@ -198,7 +196,6 @@ export default function App() {
           orders: [] // computed dynamically
         };
         setCustomer(autoCust);
-        localStorage.setItem('lavender_customer', JSON.stringify({ uid: autoCust.uid, email: autoCust.email, role: autoCust.role }));
         saveRegisteredUser(autoCust);
 
         // Sync guest customer profile to Firestore
@@ -232,98 +229,77 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#fcfaf7] flex flex-col justify-center items-center font-sans">
         <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4" />
-        <p className="text-sm text-slate-500 font-medium animate-pulse">Memverifikasi kredensial...</p>
+        <p className="text-sm text-slate-500 font-medium animate-pulse">Memuat...</p>
       </div>
     );
   }
 
   if (isAdminRoute) {
-    if (customer) {
-      if (customer.role === 'admin') {
-        return (
-          <AdminDashboard 
-            isOpen={true}
-            onClose={() => navigate('/')}
-            orders={orders}
-            onUpdateOrder={async (updatedOrder) => {
-              // Optimistically update locally
-              setOrders(prev => prev.map(o => o.order_id === updatedOrder.order_id ? updatedOrder : o));
-              try {
-                // Find matching customerId from profile or fallback
-                let custId = 'guest_uid';
-                const found = await findUserByEmailInFirestore(updatedOrder.email || '');
-                if (found) {
-                  custId = found.uid;
-                }
-                await OrderService.saveOrder(updatedOrder, custId);
-                console.log(`[App] Admin updated order ${updatedOrder.order_id} in Firestore.`);
-              } catch (err) {
-                console.error('Failed to update order in Firestore:', err);
-              }
-            }}
-            onDeleteOrder={async (orderId) => {
-              // Optimistically update locally
-              setOrders(prev => prev.filter(o => o.order_id !== orderId));
-              try {
-                await OrderService.deleteOrder(orderId);
-                console.log(`[App] Admin deleted order ${orderId} from Firestore.`);
-              } catch (err) {
-                console.error('Failed to delete order from Firestore:', err);
-              }
-            }}
-            onLogout={() => handleLogout(navigate)}
-            services={services}
-            onUpdateServices={handleUpdateServices}
-            categories={categories}
-            onUpdateCategories={handleUpdateCategories}
-            webInfo={webInfo}
-            onUpdateWebInfo={handleUpdateWebInfo}
-          />
-        );
-      } else {
-        // Customer trying to access Admin Dashboard, show Access Denied page
-        return (
-          <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 text-center font-sans">
-            <div className="max-w-md bg-white p-8 rounded-3xl border border-red-100 shadow-xl space-y-6 animate-in fade-in zoom-in-95 duration-300">
-              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-                🚫
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-slate-800">Akses Ditolak</h2>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Maaf, Anda tidak memiliki izin untuk mengakses Dashboard Admin. Halaman ini terbatas untuk Administrator.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setDashboardOpen(true);
-                    navigate('/');
-                  }}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-sans text-xs font-semibold uppercase tracking-wider rounded-2xl transition-all cursor-pointer shadow-sm"
-                >
-                  Buka Dashboard Customer
-                </button>
-                <button
-                  onClick={() => navigate('/')}
-                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans text-xs font-semibold uppercase tracking-wider rounded-2xl transition-all cursor-pointer"
-                >
-                  Kembali ke Beranda
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-    } else {
-      // Guest trying to access Admin, show Admin login page
+    if (customer && customer.role === 'admin') {
       return (
-        <AdminLogin 
-          onLoginSuccess={(newCust) => handleLoginSuccess(newCust, navigate)}
-          onGoHome={() => navigate('/')}
+        <AdminDashboard 
+          isOpen={true}
+          onClose={() => navigate('/')}
+          orders={orders}
+          onUpdateOrder={async (updatedOrder) => {
+            // Optimistically update locally
+            setOrders(prev => prev.map(o => o.order_id === updatedOrder.order_id ? updatedOrder : o));
+            try {
+              // Find matching customerId from profile or fallback
+              let custId = 'guest_uid';
+              const found = await findUserByEmailInFirestore(updatedOrder.email || '');
+              if (found) {
+                custId = found.uid;
+              }
+              await OrderService.saveOrder(updatedOrder, custId);
+              console.log(`[App] Admin updated order ${updatedOrder.order_id} in Firestore.`);
+            } catch (err) {
+              console.error('Failed to update order in Firestore:', err);
+            }
+          }}
+          onDeleteOrder={async (orderId) => {
+            // Optimistically update locally
+            setOrders(prev => prev.filter(o => o.order_id !== orderId));
+            try {
+              await OrderService.deleteOrder(orderId);
+              console.log(`[App] Admin deleted order ${orderId} from Firestore.`);
+            } catch (err) {
+              console.error('Failed to delete order from Firestore:', err);
+            }
+          }}
+          onLogout={() => handleLogout(navigate)}
+          services={services}
+          onUpdateServices={handleUpdateServices}
+          categories={categories}
+          onUpdateCategories={handleUpdateCategories}
+          webInfo={webInfo}
+          onUpdateWebInfo={handleUpdateWebInfo}
         />
       );
     }
+
+    // Guest or non-admin customer accessing /admin -> Render 404 page
+    return (
+      <div className="min-h-screen bg-[#fcfaf7] flex flex-col justify-center items-center p-6 text-center font-sans select-none">
+        <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-slate-150 shadow-sm space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-6xl font-extrabold text-slate-800 tracking-tight">404</h1>
+            <h2 className="text-xl font-bold text-slate-700">Halaman Tidak Ditemukan</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Maaf, halaman yang Anda cari tidak tersedia.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              onClick={() => navigate('/')}
+              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-sans text-xs font-semibold uppercase tracking-wider rounded-2xl transition-all cursor-pointer shadow-xs"
+            >
+              Kembali ke Beranda
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (isCustomerRoute && !customer) {
@@ -455,7 +431,6 @@ export default function App() {
             // Remove password from local state
             delete (updated as any).password;
             setCustomer(updated);
-            localStorage.setItem('lavender_customer', JSON.stringify({ uid: updated.uid, email: updated.email, role: updated.role }));
             saveRegisteredUser(updated);
 
             // Sync with Firestore
