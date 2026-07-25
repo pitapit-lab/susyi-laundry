@@ -63,6 +63,11 @@ export interface Customer {
     status: string;
     coordinates?: [number, number];
     address?: string;
+    routeType?: string;
+    routeDistance?: number;
+    routeDuration?: number;
+    routeGeometry?: [number, number][];
+    item_details?: OrderItem[];
   }[];
 }
 
