@@ -3,35 +3,18 @@ import { Customer } from '../types';
 import { auth } from '../utils/firebase';
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { 
-  bootstrapDemoUsersToFirestore, 
   saveUserToFirestore, 
   findUserByEmailInFirestore,
-  getUserFromFirestore,
-  seedAdminAccount
+  getUserFromFirestore
 } from '../utils/firebaseSync';
 
 export function useAuth() {
-  const [customer, setCustomer] = useState<Customer | null>(() => {
-    const saved = localStorage.getItem('lavender_customer');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.email) {
-          return parsed;
-        }
-      } catch (e) {}
-    }
-    return null;
-  });
+  const [customer, setCustomer] = useState<Customer | null>(null);
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [showSandboxNotice, setShowSandboxNotice] = useState(true);
-
-  useEffect(() => {
-    seedAdminAccount();
-  }, []);
 
   useEffect(() => {
     setAuthLoading(true);
@@ -56,10 +39,11 @@ export function useAuth() {
               delete (mergedCustomer as any).password;
               await saveUserToFirestore(gUid, mergedCustomer, 'Email + Google');
               setCustomer(mergedCustomer);
-              localStorage.setItem('lavender_customer', JSON.stringify({ uid: mergedCustomer.uid, email: mergedCustomer.email, role: mergedCustomer.role }));
             } else {
-              await auth.signOut();
-              localStorage.setItem('google_login_error', 'Akun Google ini belum terdaftar sebagai Customer. Silakan daftar terlebih dahulu sebelum menggunakan Login Google.');
+              await signOut(auth);
+              localStorage.clear();
+              sessionStorage.clear();
+              setCustomer(null);
               setLoginOpen(true);
             }
           }
@@ -71,7 +55,7 @@ export function useAuth() {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (sessionStorage.getItem('lavender_auth_registering') === 'true') {
-        console.log('[useAuth] Auth state changed but registration is in progress. Bypassing global auto-signout check.');
+        console.log('[useAuth] Auth state changed but registration is in progress.');
         setAuthLoading(false);
         return;
       }
@@ -82,42 +66,22 @@ export function useAuth() {
           if (profile) {
             delete (profile as any).password;
             setCustomer(profile);
-            localStorage.setItem('lavender_customer', JSON.stringify({ uid: profile.uid, email: profile.email, role: profile.role }));
-            if (profile.role === 'admin') {
-              bootstrapDemoUsersToFirestore();
-            }
           } else {
-            if (user.email) {
-              const existingRecord = await findUserByEmailInFirestore(user.email);
-              if (existingRecord) {
-                const mergedCustomer: Customer = {
-                  ...existingRecord.customer,
-                  google_linked: true,
-                  avatar: existingRecord.customer.avatar || user.photoURL || ""
-                };
-                delete (mergedCustomer as any).password;
-                await saveUserToFirestore(user.uid, mergedCustomer, 'Email + Google');
-                setCustomer(mergedCustomer);
-                localStorage.setItem('lavender_customer', JSON.stringify({ uid: mergedCustomer.uid, email: mergedCustomer.email, role: mergedCustomer.role }));
-              } else {
-                await auth.signOut();
-                setCustomer(null);
-                localStorage.removeItem('lavender_customer');
-              }
-            } else {
-              await auth.signOut();
-              setCustomer(null);
-              localStorage.removeItem('lavender_customer');
-            }
+            console.warn("Firestore user profile not found for UID:", user.uid);
+            await signOut(auth);
+            localStorage.clear();
+            sessionStorage.clear();
+            setCustomer(null);
           }
         } catch (err) {
           console.error("Error fetching user profile:", err);
+          await signOut(auth).catch(() => {});
+          localStorage.clear();
+          sessionStorage.clear();
           setCustomer(null);
-          localStorage.removeItem('lavender_customer');
         }
       } else {
         setCustomer(null);
-        localStorage.removeItem('lavender_customer');
       }
       setAuthLoading(false);
     });
@@ -128,9 +92,7 @@ export function useAuth() {
   const handleLoginSuccess = (newCustomer: Customer, navigate: (path: string) => void) => {
     delete (newCustomer as any).password;
     setCustomer(newCustomer);
-    localStorage.setItem('lavender_customer', JSON.stringify({ uid: newCustomer.uid, email: newCustomer.email, role: newCustomer.role }));
     if (newCustomer.role === 'admin') {
-      sessionStorage.setItem('lavender_admin_logged_in_just_now', 'true');
       navigate('/admin');
     } else {
       setDashboardOpen(true);
@@ -144,8 +106,9 @@ export function useAuth() {
     } catch (e) {
       console.error('Firebase signOut error:', e);
     }
+    localStorage.clear();
+    sessionStorage.clear();
     setCustomer(null);
-    localStorage.removeItem('lavender_customer');
     setDashboardOpen(false);
     navigate('/');
   };
