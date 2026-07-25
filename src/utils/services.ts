@@ -280,7 +280,15 @@ export const OrderService = {
       routeType: order.routeType || '',
       routeDistance: order.routeDistance || 0,
       routeDuration: order.routeDuration || 0,
-      routeGeometry: Array.isArray(order.routeGeometry) ? JSON.stringify(order.routeGeometry) : '[]'
+      routeGeometry: Array.isArray(order.routeGeometry) ? JSON.stringify(order.routeGeometry) : '[]',
+      pickup_verification: order.pickup_verification || null,
+      courier_status: order.courier_status || null,
+      pickup_proof_photo: order.pickup_proof_photo || null,
+      location_proof_photo: order.location_proof_photo || null,
+      delivery_proof_photo: order.delivery_proof_photo || null,
+      pickup_completed_at: order.pickup_completed_at || null,
+      delivery_started_at: order.delivery_started_at || null,
+      delivery_completed_at: order.delivery_completed_at || null
     };
   },
 
@@ -319,7 +327,15 @@ export const OrderService = {
           }
         }
         return docData.routeGeometry || [];
-      })()
+      })(),
+      pickup_verification: docData.pickup_verification || undefined,
+      courier_status: docData.courier_status || undefined,
+      pickup_proof_photo: docData.pickup_proof_photo || undefined,
+      location_proof_photo: docData.location_proof_photo || undefined,
+      delivery_proof_photo: docData.delivery_proof_photo || undefined,
+      pickup_completed_at: docData.pickup_completed_at || undefined,
+      delivery_started_at: docData.delivery_started_at || undefined,
+      delivery_completed_at: docData.delivery_completed_at || undefined
     };
   },
 
@@ -900,14 +916,29 @@ export const CategoryService = {
       const list: AdminCategory[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
+        const rawItems = Array.isArray(data.items) ? data.items : [];
+        const sanitizedItems = rawItems.map((item: any) => ({
+          id: item.id || 'item-' + (item.name || '').toLowerCase().replace(/\s+/g, '-'),
+          name: item.name || '',
+          price: Number(item.price) || 0,
+          isActive: item.isActive !== false
+        }));
+
         list.push({
           id: data.id || doc.id,
           name: data.name || '',
           icon: data.icon || '',
-          items: data.items || [],
+          items: sanitizedItems,
           createdAt: data.createdAt ? formatTimestamp(data.createdAt) : undefined,
           updatedAt: data.updatedAt ? formatTimestamp(data.updatedAt) : undefined
         } as any);
+      });
+
+      // Sort categories to maintain consistent order by createdAt
+      list.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateA - dateB;
       });
 
       if (snapshot.empty) {
