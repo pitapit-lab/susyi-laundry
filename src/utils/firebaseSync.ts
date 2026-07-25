@@ -162,54 +162,7 @@ export function normalizeEmailForAuth(email: string): string {
   return clean;
 }
 
-// 6. Seed default Admin account (admin@laundry) if not exists
+// 6. Seed default Admin account (disabled for security)
 export async function seedAdminAccount(): Promise<void> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    console.warn('App is offline. Postponing admin account seeding.');
-    return;
-  }
-
-  try {
-    const adminEmail = 'admin@laundry';
-    const adminPassword = 'baksourat999';
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, normalizeEmailForAuth(adminEmail), adminPassword);
-      const user = userCredential.user;
-      
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, {
-        uid: user.uid,
-        namaLengkap: 'Administrator',
-        email: adminEmail,
-        nomorWhatsapp: '',
-        provider: 'email',
-        role: 'admin',
-        status: 'aktif',
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        name: 'Administrator',
-        phone: '',
-        address: '',
-        avatar: '',
-        points: 0
-      });
-      console.log('Seeded admin@laundry account into Firebase Auth & Firestore successfully.');
-      await signOut(auth);
-    } catch (authError: any) {
-      if (authError.code === 'auth/email-already-in-use') {
-        console.log('Admin account admin@laundry already exists in Firebase Auth.');
-      } else if (authError.code === 'auth/operation-not-allowed') {
-        console.warn('Email/Password authentication is disabled in Firebase Console. Please enable it!');
-      } else {
-        throw authError;
-      }
-    }
-  } catch (error: any) {
-    if (error && (error.code === 'auth/network-request-failed' || error.message?.includes('network-request-failed'))) {
-      console.warn('Postponed admin account seeding: Network is currently unreachable or Firebase is offline.');
-    } else {
-      console.warn('Info: Seeding admin account was bypassed or postponed:', error?.message || error);
-    }
-  }
+  // Auto admin seeding is disabled. Admin accounts must be created directly in Firebase Console.
 }
