@@ -4,7 +4,7 @@ import {
   Clock, MapPin, Phone, User, Tag, ShoppingBag, AlertTriangle, Save, LogOut,
   Info, LayoutDashboard, Settings, Layers, HelpCircle, ToggleLeft, ToggleRight, ArrowLeft,
   Users, Coins, Megaphone, TrendingUp, Menu, ChevronLeft, ChevronRight, Bell, Mail,
-  Sun, Moon, Sparkles, Activity, CheckCircle2, FileText, FileSpreadsheet, Download, Printer, TrendingDown, RefreshCw, ChevronUp, ChevronDown, Zap
+  Sun, Moon, Sparkles, Activity, CheckCircle2, FileText, FileSpreadsheet, Download, Printer, TrendingDown, RefreshCw, ChevronUp, ChevronDown, Zap, Truck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Order, OrderItem, Customer } from '../types';
@@ -13,6 +13,8 @@ import { listenToUsersInFirestore, deleteUserFromFirestore } from '../utils/fire
 import AdminOrderMap from './AdminOrderMap';
 import CustomerOrderMap from './CustomerOrderMap';
 import FinancialCharts from './FinancialCharts';
+import PickupVerificationSection from './PickupVerificationSection';
+import CourierManagement from './CourierManagement';
 
 export interface OrderNotification {
   id: string;
@@ -189,7 +191,7 @@ export default function AdminDashboard({
   onUpdateWebInfo
 }: AdminDashboardProps) {
   // Navigation Tabs state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'services' | 'categories' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'customers' | 'courier' | 'services' | 'categories' | 'reports'>('dashboard');
 
   // Real-time order notifications list state
   const [notifications, setNotifications] = useState<OrderNotification[]>([]);
@@ -769,7 +771,8 @@ export default function AdminDashboard({
       itemsList = itemsList.map(i => i.name === editingItemInCat.itemName ? {
         ...i,
         name: itemName,
-        price: itemPrice
+        price: itemPrice,
+        isActive: i.isActive !== false
       } : i);
     } else {
       // Add
@@ -782,7 +785,10 @@ export default function AdminDashboard({
       });
     }
 
-    updated[catIdx].items = itemsList;
+    updated[catIdx] = {
+      ...updated[catIdx],
+      items: itemsList
+    };
     onUpdateCategories(updated);
     setEditingItemInCat(null);
     setIsAddingItemToCatId(null);
@@ -796,7 +802,10 @@ export default function AdminDashboard({
     if (catIdx > -1) {
       const itemsList = [...updated[catIdx].items];
       itemsList[itemIdx] = { ...itemsList[itemIdx], isActive: !itemsList[itemIdx].isActive };
-      updated[catIdx].items = itemsList;
+      updated[catIdx] = {
+        ...updated[catIdx],
+        items: itemsList
+      };
       onUpdateCategories(updated);
     }
   };
@@ -805,7 +814,10 @@ export default function AdminDashboard({
     const updated = [...categories];
     const catIdx = updated.findIndex(c => c.id === catId);
     if (catIdx > -1) {
-      updated[catIdx].items = updated[catIdx].items.filter(i => i.name !== itemName);
+      updated[catIdx] = {
+        ...updated[catIdx],
+        items: updated[catIdx].items.filter(i => i.name !== itemName)
+      };
       onUpdateCategories(updated);
     }
   };
@@ -985,6 +997,7 @@ export default function AdminDashboard({
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, tag: 'Overview' },
             { id: 'orders', label: 'Data Pesanan', icon: ShoppingBag, badge: orders.length },
             { id: 'customers', label: 'Data Pelanggan', icon: Users, badge: customerList.length },
+            { id: 'courier', label: 'Manajemen Kurir', icon: Truck, tag: 'BARU' },
             { id: 'services', label: 'Manajemen Layanan', icon: Layers, tag: 'Layanan' },
             { id: 'categories', label: 'Item Laundry', icon: Tag },
             { id: 'reports', label: 'Laporan & Analitik', icon: TrendingUp },
@@ -1695,6 +1708,12 @@ export default function AdminDashboard({
                           </div>
                         </div>
                       </div>
+
+                      {/* Pickup Verification Section (Verifikasi Item Saat Penjemputan) */}
+                      <PickupVerificationSection 
+                        order={order} 
+                        onUpdateOrder={onUpdateOrder} 
+                      />
                     </div>
                   );
                 })}
@@ -1845,6 +1864,17 @@ export default function AdminDashboard({
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB 2.5: MANAJEMEN KURIR */}
+        {activeTab === 'courier' && (
+          <div className="animate-fade-in pb-12">
+            <CourierManagement 
+              orders={orders} 
+              onUpdateOrder={onUpdateOrder}
+              onOpenMapModal={(orderId) => setOpenedMapOrderId(orderId)}
+            />
           </div>
         )}
 
@@ -2221,7 +2251,7 @@ export default function AdminDashboard({
                         const isEditingThisItem = editingItemInCat?.catId === cat.id && editingItemInCat?.itemName === item.name;
                         return (
                           <div key={item.name} className={`flex justify-between items-center text-xs py-2 px-2.5 border-b border-slate-50 rounded-xl transition-colors ${
-                            item.isActive ? 'hover:bg-slate-50' : 'bg-slate-50 opacity-60'
+                            item.isActive !== false ? 'hover:bg-slate-50' : 'bg-slate-50 opacity-60'
                           }`}>
                             <div className="flex-1">
                               {isEditingThisItem ? (
@@ -2252,12 +2282,12 @@ export default function AdminDashboard({
                               <button
                                 onClick={() => handleToggleItemInCat(cat.id, idx)}
                                 className={`text-[10px] font-black border px-2 py-0.5 rounded-md ${
-                                  item.isActive 
+                                  item.isActive !== false 
                                     ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
                                     : 'bg-rose-50 border-rose-200 text-rose-500'
                                 }`}
                               >
-                                {item.isActive ? 'AKTIF' : 'MATI'}
+                                {item.isActive !== false ? 'AKTIF' : 'MATI'}
                               </button>
 
                               {isEditingThisItem ? (
