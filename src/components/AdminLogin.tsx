@@ -3,8 +3,8 @@ import { Mail, Lock, Sparkles, LogIn, ArrowLeft, Info, ShieldAlert, Eye, EyeOff 
 import { motion } from 'motion/react';
 import { Customer } from '../types';
 import { auth, getReadableAuthError } from '../utils/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getUserFromFirestore, saveUserToFirestore, normalizeEmailForAuth } from '../utils/firebaseSync';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { getUserFromFirestore, normalizeEmailForAuth } from '../utils/firebaseSync';
 
 interface AdminLoginProps {
   onLoginSuccess: (customer: Customer) => void;
@@ -17,41 +17,6 @@ export default function AdminLogin({ onLoginSuccess, onGoHome }: AdminLoginProps
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleDemoAdminLogin = async () => {
-    setError('');
-    setIsLoading(true);
-    const targetEmail = 'admin@laundry';
-    const targetPassword = 'baksourat999';
-    
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, normalizeEmailForAuth(targetEmail), targetPassword);
-      const user = userCredential.user;
-      let profile = await getUserFromFirestore(user.uid);
-      if (!profile) {
-        profile = {
-          name: 'Administrator',
-          phone: '',
-          email: targetEmail,
-          address: '',
-          points: 0,
-          role: 'admin',
-          orders: [],
-          avatar: '',
-          google_linked: false,
-          status: 'aktif'
-        };
-        await saveUserToFirestore(user.uid, profile, 'Email');
-      }
-
-      onLoginSuccess(profile);
-    } catch (err: any) {
-      console.error('Demo Admin Auth Error:', err);
-      setError('Gagal masuk sebagai Admin Demo: ' + getReadableAuthError(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -73,8 +38,8 @@ export default function AdminLogin({ onLoginSuccess, onGoHome }: AdminLoginProps
       const profile = await getUserFromFirestore(user.uid);
       
       if (!profile || profile.role !== 'admin') {
-        setError('Akses Ditolak: Akun ini tidak terdaftar sebagai Administrator.');
         await auth.signOut();
+        setError('Akses Ditolak. Akun ini bukan Administrator.');
         setIsLoading(false);
         return;
       }
@@ -137,28 +102,6 @@ export default function AdminLogin({ onLoginSuccess, onGoHome }: AdminLoginProps
             </p>
           </div>
 
-          {/* Quick Access Demo Badge */}
-          <div className="bg-amber-50/80 border border-amber-200/50 rounded-2xl p-4.5 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] text-amber-900 font-extrabold uppercase tracking-wider block">
-                Akses Pengujian Cepat
-              </span>
-            </div>
-            <p className="font-sans text-[10px] text-amber-800 leading-relaxed">
-              Klik tombol di bawah untuk masuk secara instan ke dalam Dashboard Admin dengan status Administrator penuh.
-            </p>
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={handleDemoAdminLogin}
-              className="w-full py-2.5 px-4 bg-white hover:bg-amber-100/20 text-amber-800 border border-amber-200 hover:border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <LogIn className="w-4 h-4 text-amber-600" />
-              {isLoading ? 'Sedang Memproses...' : 'Masuk Instan Demo Admin'}
-            </button>
-          </div>
-
           {/* Main Credentials Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
@@ -182,7 +125,7 @@ export default function AdminLogin({ onLoginSuccess, onGoHome }: AdminLoginProps
                   disabled={isLoading}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@laundry"
+                  placeholder="admin@example.com"
                   className="w-full pl-10 pr-4 py-2.5 text-sm rounded-2xl bg-white border border-purple-100 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 focus:outline-none transition-all placeholder:text-slate-350 font-medium"
                 />
               </div>
