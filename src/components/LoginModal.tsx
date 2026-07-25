@@ -290,23 +290,9 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
         return;
       }
 
-      if (cleanEmail !== 'admin@laundry' && !cleanEmail.endsWith('@gmail.com')) {
-        setError('Login customer hanya diperbolehkan menggunakan email dengan domain @gmail.com.');
-        return;
-      }
-
       setIsLoading(true);
       try {
-        let result;
-        if (cleanEmail === 'admin@laundry') {
-          if (password !== 'baksourat999') {
-            setError('Password administrator salah.');
-            setIsLoading(false);
-            return;
-          }
-        }
-        
-        result = await signInWithEmailAndPassword(auth, normalizeEmailForAuth(cleanEmail), password);
+        const result = await signInWithEmailAndPassword(auth, normalizeEmailForAuth(cleanEmail), password);
         const user = result.user;
 
         // Fetch corresponding profile from Firestore (Prioritize UID, fallback to Email query)
@@ -315,7 +301,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
           const existingRecord = await findUserByEmailInFirestore(user.email);
           if (existingRecord) {
             profile = existingRecord.customer;
-            // Link it to the UID if needed
             await saveUserToFirestore(user.uid, profile, 'Email');
           }
         }
@@ -324,27 +309,8 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
           onLoginSuccess(profile);
           onClose();
         } else {
-          // If it is admin, we can auto-create the profile as safety fallback
-          if (cleanEmail === 'admin@laundry') {
-            const adminProfile: Customer = {
-              name: 'Administrator',
-              email: cleanEmail,
-              phone: '',
-              address: '',
-              points: 0,
-              role: 'admin',
-              orders: [],
-              avatar: `https://www.gravatar.com/avatar/${btoa(cleanEmail).substring(0, 10)}?d=identicon`,
-              google_linked: false,
-              status: 'aktif'
-            };
-            await saveUserToFirestore(user.uid, adminProfile, 'Email');
-            onLoginSuccess(adminProfile);
-            onClose();
-          } else {
-            await auth.signOut();
-            setError('Akun belum terdaftar. Silakan daftar terlebih dahulu.');
-          }
+          await auth.signOut();
+          setError('Akun belum terdaftar. Silakan daftar terlebih dahulu.');
         }
       } catch (err: any) {
         console.error('Login Error:', err);
@@ -356,16 +322,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       // Registration Mode
       if (!name || !phone || !email || !password || !confirmPassword) {
         setError('Mohon lengkapi seluruh kolom wajib.');
-        return;
-      }
-
-      if (cleanEmail === 'admin@laundry') {
-        setError('Email administrator utama tidak dapat didaftarkan sebagai customer baru.');
-        return;
-      }
-
-      if (!cleanEmail.endsWith('@gmail.com')) {
-        setError('Pendaftaran hanya diperbolehkan menggunakan email dengan domain @gmail.com.');
         return;
       }
 
@@ -428,53 +384,6 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginMod
       } finally {
         setIsLoading(false);
       }
-    }
-  };
-
-  // Demo Login Backups (Maintains easy evaluation access)
-  const handleDemoLogin = async (demoEmail: string, role: 'customer' | 'admin') => {
-    setError('');
-    setIsLoading(true);
-
-    const targetEmail = role === 'admin' ? 'admin@laundry' : 'amanda.kirana@gmail.com';
-    const targetPassword = role === 'admin' ? 'baksourat999' : 'password123';
-
-    try {
-      let result;
-      try {
-        result = await signInWithEmailAndPassword(auth, normalizeEmailForAuth(targetEmail), targetPassword);
-      } catch (err: any) {
-        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-          result = await createUserWithEmailAndPassword(auth, normalizeEmailForAuth(targetEmail), targetPassword);
-        } else {
-          throw err;
-        }
-      }
-      const user = result.user;
-      
-      let profile = await getUserFromFirestore(user.uid);
-      if (!profile) {
-        profile = {
-          name: role === 'admin' ? 'Administrator' : 'Kak Amanda Kirana',
-          phone: role === 'admin' ? '' : '081234567890',
-          email: targetEmail,
-          address: role === 'admin' ? '' : 'Apartemen Senopati Suites, Kebayoran Baru',
-          points: role === 'admin' ? 0 : 15,
-          role: role,
-          orders: [],
-          avatar: '',
-          google_linked: false,
-          status: role === 'admin' ? 'aktif' : 'Active'
-        };
-        await saveUserToFirestore(user.uid, profile, 'Email');
-      }
-      onLoginSuccess(profile);
-      onClose();
-    } catch (err: any) {
-      console.error('Demo auth error:', err);
-      setError('Akses demo gagal: ' + err.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
