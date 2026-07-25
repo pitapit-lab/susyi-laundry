@@ -3,7 +3,6 @@ import { Sparkles, LogOut, Package, X, Check, ArrowRight, Edit3, MapPin, Loader2
 import { motion, AnimatePresence } from 'motion/react';
 import { Customer } from '../types';
 import { getRegisteredUsers } from '../utils/database';
-import CustomerOrderMap from './CustomerOrderMap';
 import { reverseGeocode } from '../utils/mapServices';
 
 const API_KEY =
@@ -651,33 +650,54 @@ export default function CustomerDashboard({ isOpen, onClose, customer, onLogout,
                           </div>
 
                           {/* Custom OSRM route selection metadata */}
-                          {(ord as any).routeType && (
-                            <div className="flex flex-wrap gap-1.5 items-center text-[9px] pb-1.5">
-                              <span className="bg-blue-50 text-blue-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-blue-100/50">
-                                🛣️ Rute: {(ord as any).routeType}
-                              </span>
+                          {((ord as any).routeType || (ord as any).routeDistance !== undefined || (ord as any).routeDuration !== undefined) && (
+                            <div className="flex flex-wrap gap-1.5 items-center text-[10px] pb-1">
+                              {(ord as any).routeType && (
+                                <span className="bg-blue-50 text-blue-700 font-sans font-semibold px-2 py-0.5 rounded-md border border-blue-100/60 inline-flex items-center gap-1">
+                                  <span>🛣️</span>
+                                  <span>Rute: {(ord as any).routeType}</span>
+                                </span>
+                              )}
                               {(ord as any).routeDistance !== undefined && (
-                                <span className="bg-emerald-50 text-emerald-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-emerald-100/50">
-                                  📏 {(ord as any).routeDistance} km
+                                <span className="bg-emerald-50 text-emerald-700 font-sans font-semibold px-2 py-0.5 rounded-md border border-emerald-100/60 inline-flex items-center gap-1">
+                                  <span>📏</span>
+                                  <span>{(ord as any).routeDistance} km</span>
                                 </span>
                               )}
                               {(ord as any).routeDuration !== undefined && (
-                                <span className="bg-amber-50 text-amber-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-amber-100/50">
-                                  ⏱️ {(ord as any).routeDuration} mnt
+                                <span className="bg-amber-50 text-amber-700 font-sans font-semibold px-2 py-0.5 rounded-md border border-amber-100/60 inline-flex items-center gap-1">
+                                  <span>⏱️</span>
+                                  <span>{(ord as any).routeDuration} menit</span>
                                 </span>
                               )}
                             </div>
                           )}
 
-                          {/* Order Map if coordinates exist */}
-                          {ord.coordinates && ord.coordinates.length === 2 && (
-                            <div className="w-full h-36 rounded-xl overflow-hidden border border-slate-150 relative z-0 mt-1">
-                              <CustomerOrderMap 
-                                orderCoords={[ord.coordinates[0], ord.coordinates[1]]} 
-                                orderAddress={ord.address} 
-                              />
+                          {/* Rincian Item Section */}
+                          <div className="bg-purple-50/40 rounded-xl p-3 border border-purple-100/60 my-2 space-y-2">
+                            <div className="font-bold text-purple-900 flex items-center gap-1.5 text-xs">
+                              <span>📦</span>
+                              <span>Rincian Item</span>
                             </div>
-                          )}
+                            {ord.item_details && ord.item_details.length > 0 ? (
+                              <ul className="space-y-1 text-slate-700 pl-0.5 text-xs font-medium">
+                                {ord.item_details.map((item, idx) => {
+                                  const qty = item.qty ?? item.customerQty ?? item.actualQty ?? 1;
+                                  return (
+                                    <li key={idx} className="flex items-center gap-1.5">
+                                      <span className="text-purple-500 font-bold">•</span>
+                                      <span>{item.name}</span>
+                                      <span className="font-bold text-purple-900">×{qty}</span>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            ) : (
+                              <p className="text-slate-400 italic text-[11px] pl-0.5">
+                                Belum ada rincian item.
+                              </p>
+                            )}
+                          </div>
 
                           {/* PROGRESS TRACKING */}
                           <div className="pt-2.5 border-t border-purple-50">
