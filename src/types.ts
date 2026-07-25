@@ -71,6 +71,35 @@ export interface OrderItem {
   qty: number;
   price: number;
   itemSubtotal: number;
+  customerQty?: number;
+  actualQty?: number;
+  verificationStatus?: 'Sesuai' | 'Tidak Sesuai';
+}
+
+export interface VerificationChangeLog {
+  timestamp: string;
+  item_name: string;
+  customer_qty: number;
+  actual_qty: number;
+  status: 'Sesuai' | 'Tidak Sesuai';
+  price: number;
+}
+
+export interface VerificationHistory {
+  timestamp: string;
+  verified_by?: string;
+  changes: VerificationChangeLog[];
+  grand_total_before: number;
+  grand_total_after: number;
+  summary_status: 'Sesuai' | 'Ada Ketidaksesuaian';
+}
+
+export interface PickupVerification {
+  is_verified: boolean;
+  verified_at?: string;
+  verified_by?: string;
+  status_summary?: 'Sesuai' | 'Ada Ketidaksesuaian';
+  history?: VerificationHistory[];
 }
 
 export interface Order {
@@ -96,5 +125,13 @@ export interface Order {
   routeDistance?: number;
   routeDuration?: number;
   routeGeometry?: [number, number][];
+  pickup_verification?: PickupVerification;
+  courier_status?: 'Menunggu Pickup' | 'Kurir Menuju Lokasi' | 'Laundry Berhasil Dijemput' | 'Menunggu Delivery' | 'Sedang Diantar' | 'Berhasil Diantar';
+  pickup_proof_photo?: string;
+  location_proof_photo?: string;
+  delivery_proof_photo?: string;
+  pickup_completed_at?: string;
+  delivery_started_at?: string;
+  delivery_completed_at?: string;
 }
 
