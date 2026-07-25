@@ -363,6 +363,27 @@ export default function AdminDashboard({
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [openedMapOrderId, setOpenedMapOrderId] = useState<string | null>(null);
 
+  // Accordion state for orders list
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Record<string, boolean>>({});
+
+  const toggleExpandOrder = (orderId: string) => {
+    setExpandedOrderIds(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
+
+  const isPriorityOrder = (order: Order) => {
+    return (
+      order.additional_service === 'ekspres' ||
+      (order as any).is_priority === true ||
+      (order as any).priority === true ||
+      (order as any).isPriority === true ||
+      order.main_service?.toLowerCase().includes('prioritas') ||
+      order.notes?.toLowerCase().includes('prioritas')
+    );
+  };
+
   // Available laundry items list generated dynamically from categories prop for editing dropdowns
   const categoriesDb = useMemo(() => {
     return categories.map(cat => ({
@@ -544,7 +565,13 @@ export default function AdminDashboard({
       const matchesStatus = statusFilter === 'Semua' || order.order_status === statusFilter;
 
       return matchesSearch && matchesStatus;
-    }).sort((a, b) => b.order_id.localeCompare(a.order_id));
+    }).sort((a, b) => {
+      const aPriority = isPriorityOrder(a);
+      const bPriority = isPriorityOrder(b);
+      if (aPriority && !bPriority) return -1;
+      if (!aPriority && bPriority) return 1;
+      return b.order_id.localeCompare(a.order_id);
+    });
   }, [orders, searchQuery, statusFilter]);
 
   // ==================== ORDER CRUD HANDLERS ====================
@@ -1471,249 +1498,349 @@ export default function AdminDashboard({
                 <p className="text-slate-500 text-sm font-semibold">Tidak ditemukan data pesanan laundry.</p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {filteredOrders.map((order) => {
+                  const isPriority = isPriorityOrder(order);
+                  const isExpanded = !!expandedOrderIds[order.order_id];
+
                   return (
                     <div
                       key={order.order_id}
-                      className="bg-white rounded-3xl border border-slate-150 hover:border-purple-200 hover:shadow-md transition-all duration-300 p-6 shadow-sm"
+                      className={`rounded-3xl transition-all duration-300 shadow-xs overflow-hidden ${
+                        isPriority 
+                          ? 'bg-gradient-to-b from-amber-50/70 via-white to-white border-2 border-amber-400 hover:border-amber-500 hover:shadow-amber-100/60' 
+                          : 'bg-white border border-slate-150 hover:border-purple-200 hover:shadow-md'
+                      }`}
                     >
-                      {/* Order Header Block */}
-                      <div className="flex flex-col md:flex-row justify-between gap-4 pb-4 border-b border-slate-100">
-                        <div>
-                          <div className="flex items-center gap-2.5">
-                            <span className="font-mono text-sm font-black text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-md">
-                              {order.order_id}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium block">
-                              Diinput: {order.created_at}
-                            </span>
-                          </div>
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!isExpanded ? (
+                          /* Collapsed Summary View */
+                          <motion.div
+                            key="collapsed"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            onClick={() => toggleExpandOrder(order.order_id)}
+                            className="p-4 sm:p-5 cursor-pointer select-none space-y-3"
+                          >
+                            {/* Header Row: Kode Laundry & Priority Badge */}
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className="font-mono text-sm font-black text-purple-950 bg-purple-100 px-3 py-1 rounded-xl border border-purple-200/60 flex items-center gap-1.5 shadow-2xs">
+                                  <span>📦</span>
+                                  <span>{order.order_id}</span>
+                                </span>
 
-                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-xs">
-                            <div className="flex items-center gap-2">
-                              <User className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
-                              <span className="text-slate-700 font-extrabold">{order.customer_name}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Phone className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
-                              <span className="text-slate-600 font-medium">{order.whatsapp}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs shrink-0">✉️</span>
-                              <span className="text-slate-600 font-medium truncate max-w-[150px]" title={order.email}>{order.email || 'Tidak ada email'}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
-                              <span className="text-slate-600 font-medium">{order.pickup_date}</span>
-                            </div>
-
-                            <div className="flex flex-col gap-1 sm:col-span-2">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
-                                <span className="text-slate-600 font-medium leading-relaxed truncate max-w-lg">{order.address}</span>
+                                {isPriority && (
+                                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black px-3 py-1 rounded-full text-[10px] tracking-wider uppercase flex items-center gap-1 shadow-xs animate-pulse">
+                                    <span>🔥</span>
+                                    <span>PRIORITAS</span>
+                                  </span>
+                                )}
                               </div>
-                              {order.coordinates && order.coordinates.length === 2 && (
-                                <div className="space-y-2 mt-2 pl-5.5 max-w-lg">
-                                  <div className="flex flex-wrap gap-2 items-center text-[10px]">
-                                    <span className="bg-purple-50 text-purple-700 font-mono px-1.5 py-0.5 rounded border border-purple-100/50">
-                                      🛰️ Lat: {order.coordinates[0].toFixed(6)}, Lng: {order.coordinates[1].toFixed(6)}
-                                    </span>
-                                    {order.routeType && (
-                                      <span className="bg-blue-50 text-blue-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-blue-100/50">
-                                        🛣️ Rute: {order.routeType}
-                                      </span>
-                                    )}
-                                    {order.routeDistance !== undefined && (
-                                      <span className="bg-emerald-50 text-emerald-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-emerald-100/50">
-                                        📏 Jarak: {order.routeDistance} km
-                                      </span>
-                                    )}
-                                    {order.routeDuration !== undefined && (
-                                      <span className="bg-amber-50 text-amber-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-amber-100/50">
-                                        ⏱️ Durasi: {order.routeDuration} mnt
-                                      </span>
-                                    )}
-                                    <a 
-                                      href={`https://www.google.com/maps/search/?api=1&query=${order.coordinates[0]},${order.coordinates[1]}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-0.5 font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-colors"
-                                    >
-                                      🗺️ Google Maps
-                                    </a>
-                                  </div>
-                                  <div className="w-full h-52 rounded-2xl overflow-hidden border border-slate-200 shadow-xs relative z-0">
-                                    <CustomerOrderMap 
-                                      orderCoords={[order.coordinates[0], order.coordinates[1]]} 
-                                      orderAddress={order.address} 
-                                    />
-                                  </div>
-                                </div>
-                              )}
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
-                              <span className="text-amber-800 font-bold">{order.pickup_time} WIB</span>
+                            {/* Summary Info Row */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                              <div className="flex items-center gap-2">
+                                <User className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                <span className="text-slate-800 font-extrabold truncate">{order.customer_name}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                <span className="text-slate-600 font-semibold">{order.pickup_date}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                <span className="text-amber-800 font-extrabold">Jemput: {order.pickup_time} WIB</span>
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="mt-2 text-xs flex items-start gap-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                            <span className="text-[#B78A62] font-semibold shrink-0">Catatan:</span>
-                            <p className="italic text-slate-500 font-medium">"{order.notes || 'Tidak ada catatan'}"</p>
-                          </div>
-
-
-                        </div>
-
-                        {/* Order action handles */}
-                        <div className="flex flex-col items-end gap-3 self-start">
-                          {deletingOrderId === order.order_id ? (
-                            <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 p-1.5 rounded-2xl shadow-xs shrink-0">
-                              <span className="text-[10px] text-rose-750 font-extrabold px-1.5 whitespace-nowrap">Yakin hapus?</span>
+                            {/* Expand Toggle Footer */}
+                            <div className="pt-2 border-t border-slate-100 flex justify-center items-center">
                               <button
-                                onClick={() => handleConfirmDelete(order.order_id)}
-                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black transition-all cursor-pointer shadow-xs whitespace-nowrap"
-                              >
-                                Ya, Hapus
-                              </button>
-                              <button
-                                onClick={() => setDeletingOrderId(null)}
-                                className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
-                              >
-                                Batal
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleDeleteOrderClick(order.order_id)}
-                              className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                              title="Hapus Pesanan"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Hapus Pesanan
-                            </button>
-                          )}
-
-                          <div className="space-y-1.5 text-right">
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mr-1 mb-1">Status Pesanan:</span>
-                              <select
-                                value={order.order_status}
-                                onChange={(e) => {
-                                  onUpdateOrder({
-                                    ...order,
-                                    order_status: e.target.value as any,
-                                    updated_at: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                                  });
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpandOrder(order.order_id);
                                 }}
-                                className={`text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase border cursor-pointer focus:outline-none transition-colors ${
-                                  order.order_status === 'Selesai' 
-                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
-                                    : order.order_status === 'Dibatalkan'
-                                    ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                                    : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'
-                                }`}
+                                className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1.5 py-1 px-3 rounded-full hover:bg-purple-50 transition-all cursor-pointer"
                               >
-                                <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
-                                <option value="Diproses">Diproses</option>
-                                <option value="Dicuci">Dicuci</option>
-                                <option value="Disetrika">Disetrika</option>
-                                <option value="Siap Diantar">Siap Diantar</option>
-                                <option value="Selesai">Selesai</option>
-                                <option value="Dibatalkan">Dibatalkan</option>
-                              </select>
+                                <span>▼ Lihat Detail</span>
+                              </button>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Services details mapping */}
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-4">
-                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3.5 text-xs">
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Layanan Utama:</span>
-                              <strong className="text-purple-900 font-extrabold text-sm block">
-                                {order.main_service}
-                              </strong>
-                            </div>
-
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Kecepatan Selesai:</span>
-                              <strong className="text-slate-700 font-extrabold text-xs block uppercase">
-                                {order.additional_service === 'ekspres' ? '⚡ EKSPRES' : '🐢 REGULER'}
-                              </strong>
-                            </div>
-                          </div>
-
-                          <div className="bg-purple-950/5 p-4 rounded-2xl border border-purple-100/40 space-y-2 text-xs">
-                            <div className="flex justify-between text-slate-500">
-                              <span>Subtotal Item:</span>
-                              <span className="font-semibold text-slate-700">
-                                Rp {order.subtotal.toLocaleString('id-ID')}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-slate-500">
-                              <span>Biaya Tambahan:</span>
-                              <span className="font-semibold text-amber-600">
-                                + Rp {order.additional_fee.toLocaleString('id-ID')}
-                              </span>
-                            </div>
-                            <div className="flex justify-between pt-2 border-t border-purple-100 text-sm font-bold">
-                              <span className="text-slate-800">Grand Total:</span>
-                              <span className="text-purple-700 font-black">
-                                Rp {order.grand_total.toLocaleString('id-ID')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Items detail loop */}
-                        <div className="md:col-span-2">
-                          <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                                <Tag className="w-3.5 h-3.5 text-purple-600" />
-                                Rincian Item Laundry ({order.item_details.length} item)
-                              </h4>
+                          </motion.div>
+                        ) : (
+                          /* Expanded Full Detail View (Replaces Collapsed View) */
+                          <motion.div
+                            key="expanded"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="p-6 bg-white space-y-6"
+                          >
+                            {/* Header Toggle to Collapse */}
+                            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                              <div className="flex items-center gap-2">
+                                {isPriority && (
+                                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black px-2.5 py-0.5 rounded-full text-[9px] tracking-wider uppercase flex items-center gap-1 shadow-2xs">
+                                    <span>🔥</span>
+                                    <span>PRIORITAS</span>
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => toggleExpandOrder(order.order_id)}
+                                className="text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <span>▲ Tutup Detail</span>
+                              </button>
                             </div>
 
-                            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                              {order.item_details.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-xs py-2 px-1 border-b border-slate-100 hover:bg-slate-50/50 rounded-lg">
-                                  <div className="flex-1 min-w-0">
-                                    <span className="font-bold text-slate-700 block truncate">{item.name}</span>
-                                    <span className="text-slate-400 text-[10px]">
-                                      Rp {item.price.toLocaleString('id-ID')} / pcs
-                                    </span>
+                            {/* Order Header Block */}
+                            <div className="flex flex-col md:flex-row justify-between gap-4 pb-4 border-b border-slate-100">
+                              <div>
+                                <div className="flex items-center gap-2.5">
+                                  <span className="font-mono text-sm font-black text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-md">
+                                    {order.order_id}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-medium block">
+                                    Diinput: {order.created_at}
+                                  </span>
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <User className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                    <span className="text-slate-700 font-extrabold">{order.customer_name}</span>
                                   </div>
 
-                                  <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-slate-500 font-bold">x{item.qty} pcs</span>
-                                    </div>
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                    <span className="text-slate-600 font-medium">{order.whatsapp}</span>
+                                  </div>
 
-                                    <div className="w-24 text-right font-extrabold text-slate-800">
-                                      Rp {item.itemSubtotal.toLocaleString('id-ID')}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs shrink-0">✉️</span>
+                                    <span className="text-slate-600 font-medium truncate max-w-[150px]" title={order.email}>{order.email || 'Tidak ada email'}</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                    <span className="text-slate-600 font-medium">{order.pickup_date}</span>
+                                  </div>
+
+                                  <div className="flex flex-col gap-1 sm:col-span-2">
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                      <span className="text-slate-600 font-medium leading-relaxed truncate max-w-lg">{order.address}</span>
                                     </div>
+                                    {order.coordinates && order.coordinates.length === 2 && (
+                                      <div className="space-y-2 mt-2 pl-5.5 max-w-lg">
+                                        <div className="flex flex-wrap gap-2 items-center text-[10px]">
+                                          <span className="bg-purple-50 text-purple-700 font-mono px-1.5 py-0.5 rounded border border-purple-100/50">
+                                            🛰️ Lat: {order.coordinates[0].toFixed(6)}, Lng: {order.coordinates[1].toFixed(6)}
+                                          </span>
+                                          {order.routeType && (
+                                            <span className="bg-blue-50 text-blue-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-blue-100/50">
+                                              🛣️ Rute: {order.routeType}
+                                            </span>
+                                          )}
+                                          {order.routeDistance !== undefined && (
+                                            <span className="bg-emerald-50 text-emerald-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-emerald-100/50">
+                                              📏 Jarak: {order.routeDistance} km
+                                            </span>
+                                          )}
+                                          {order.routeDuration !== undefined && (
+                                            <span className="bg-amber-50 text-amber-700 font-sans font-semibold px-1.5 py-0.5 rounded border border-amber-100/50">
+                                              ⏱️ Durasi: {order.routeDuration} mnt
+                                            </span>
+                                          )}
+                                          <a 
+                                            href={`https://www.google.com/maps/search/?api=1&query=${order.coordinates[0]},${order.coordinates[1]}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-0.5 font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition-colors"
+                                          >
+                                            🗺️ Google Maps
+                                          </a>
+                                        </div>
+                                        <div className="w-full h-52 rounded-2xl overflow-hidden border border-slate-200 shadow-xs relative z-0">
+                                          <CustomerOrderMap 
+                                            orderCoords={[order.coordinates[0], order.coordinates[1]]} 
+                                            orderAddress={order.address} 
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-3.5 h-3.5 text-[#B78A62] shrink-0" />
+                                    <span className="text-amber-800 font-bold">{order.pickup_time} WIB</span>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Pickup Verification Section (Verifikasi Item Saat Penjemputan) */}
-                      <PickupVerificationSection 
-                        order={order} 
-                        onUpdateOrder={onUpdateOrder} 
-                      />
+                                <div className="mt-2 text-xs flex items-start gap-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  <span className="text-[#B78A62] font-semibold shrink-0">Catatan:</span>
+                                  <p className="italic text-slate-500 font-medium">"{order.notes || 'Tidak ada catatan'}"</p>
+                                </div>
+
+
+                              </div>
+
+                              {/* Order action handles */}
+                              <div className="flex flex-col items-end gap-3 self-start">
+                                {deletingOrderId === order.order_id ? (
+                                  <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 p-1.5 rounded-2xl shadow-xs shrink-0">
+                                    <span className="text-[10px] text-rose-750 font-extrabold px-1.5 whitespace-nowrap">Yakin hapus?</span>
+                                    <button
+                                      onClick={() => handleConfirmDelete(order.order_id)}
+                                      className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                                    >
+                                      Ya, Hapus
+                                    </button>
+                                    <button
+                                      onClick={() => setDeletingOrderId(null)}
+                                      className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
+                                    >
+                                      Batal
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleDeleteOrderClick(order.order_id)}
+                                    className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                                    title="Hapus Pesanan"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Hapus Pesanan
+                                  </button>
+                                )}
+
+                                <div className="space-y-1.5 text-right">
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mr-1 mb-1">Status Pesanan:</span>
+                                    <select
+                                      value={order.order_status}
+                                      onChange={(e) => {
+                                        onUpdateOrder({
+                                          ...order,
+                                          order_status: e.target.value as any,
+                                          updated_at: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                                        });
+                                      }}
+                                      className={`text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase border cursor-pointer focus:outline-none transition-colors ${
+                                        order.order_status === 'Selesai' 
+                                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                                          : order.order_status === 'Dibatalkan'
+                                          ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                                          : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'
+                                      }`}
+                                    >
+                                      <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+                                      <option value="Diproses">Diproses</option>
+                                      <option value="Dicuci">Dicuci</option>
+                                      <option value="Disetrika">Disetrika</option>
+                                      <option value="Siap Diantar">Siap Diantar</option>
+                                      <option value="Selesai">Selesai</option>
+                                      <option value="Dibatalkan">Dibatalkan</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Services details mapping */}
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="space-y-4">
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3.5 text-xs">
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Layanan Utama:</span>
+                                    <strong className="text-purple-900 font-extrabold text-sm block">
+                                      {order.main_service}
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Kecepatan Selesai:</span>
+                                    <strong className="text-slate-700 font-extrabold text-xs block uppercase">
+                                      {order.additional_service === 'ekspres' ? '⚡ EKSPRES' : '🐢 REGULER'}
+                                    </strong>
+                                  </div>
+                                </div>
+
+                                <div className="bg-purple-950/5 p-4 rounded-2xl border border-purple-100/40 space-y-2 text-xs">
+                                  <div className="flex justify-between text-slate-500">
+                                    <span>Subtotal Item:</span>
+                                    <span className="font-semibold text-slate-700">
+                                      Rp {order.subtotal.toLocaleString('id-ID')}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-slate-500">
+                                    <span>Biaya Tambahan:</span>
+                                    <span className="font-semibold text-amber-600">
+                                      + Rp {order.additional_fee.toLocaleString('id-ID')}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between pt-2 border-t border-purple-100 text-sm font-bold">
+                                    <span className="text-slate-800">Grand Total:</span>
+                                    <span className="text-purple-700 font-black">
+                                      Rp {order.grand_total.toLocaleString('id-ID')}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Items detail loop */}
+                              <div className="md:col-span-2">
+                                <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3">
+                                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                      <Tag className="w-3.5 h-3.5 text-purple-600" />
+                                      Rincian Item Laundry ({order.item_details.length} item)
+                                    </h4>
+                                  </div>
+
+                                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                                    {order.item_details.map((item, idx) => (
+                                      <div key={idx} className="flex justify-between items-center text-xs py-2 px-1 border-b border-slate-100 hover:bg-slate-50/50 rounded-lg">
+                                        <div className="flex-1 min-w-0">
+                                          <span className="font-bold text-slate-700 block truncate">{item.name}</span>
+                                          <span className="text-slate-400 text-[10px]">
+                                            Rp {item.price.toLocaleString('id-ID')} / pcs
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-4">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-slate-500 font-bold">x{item.qty} pcs</span>
+                                          </div>
+
+                                          <div className="w-24 text-right font-extrabold text-slate-800">
+                                            Rp {item.itemSubtotal.toLocaleString('id-ID')}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Pickup Verification Section (Verifikasi Item Saat Penjemputan) */}
+                            <PickupVerificationSection 
+                              order={order} 
+                              onUpdateOrder={onUpdateOrder} 
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}
