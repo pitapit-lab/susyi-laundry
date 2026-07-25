@@ -84,6 +84,7 @@ export default function App() {
       routeDistance: o.routeDistance,
       routeDuration: o.routeDuration,
       routeGeometry: o.routeGeometry,
+      item_details: o.item_details || [],
     }));
   }, [customer, orders]);
 
