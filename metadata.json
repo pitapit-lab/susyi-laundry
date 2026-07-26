@@ -1,0 +1,6 @@
+{
+  "name": "Susyi Laundry",
+  "description": "Laundry berkualitas dengan harga terjangkau, hasil bersih, wangi, rapi, Expres 1 hari, dan gratis antar-jemput hingga 2km.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
