@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", serif;
+  
+  /* Custom pastel lavender heights and gold accents */
+  --color-lavender-light: #f3f0ff;
+  --color-lavender-medium: #e5dbff;
+  --color-lavender-accent: #d0bfff;
+  --color-lavender-deep: #7048e8;
+  --color-gold-light: #fbf6eb;
+  --color-gold-accent: #d4af37;
+  --color-gold-rose: #b78a62;
+  --color-slate-aesthetic: #4a4254;
+}
+
+/* Custom styled scrollbars and aesthetic components */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #fdfbf7;
+}
+::-webkit-scrollbar-thumb {
+  background: #e5dbff;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d0bfff;
+}
+
+/* Hide scrollbar utility class */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+html {
+  scroll-behavior: smooth;
+}
